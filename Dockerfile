@@ -62,6 +62,24 @@ RUN if [ "$ENABLE_PYTORCH_UPGRADE" = "true" ]; then \
       uv pip install --force-reinstall torch torchvision torchaudio --index-url ${PYTORCH_INDEX_URL}; \
     fi
 
+# ── Custom nodes for video generation ────────────────────────────────────
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
+    git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git && \
+    git clone https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-CogVideoXWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-MochiWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git
+
+# Install Python dependencies for custom nodes
+RUN cd /comfyui && \
+    pip install --no-cache-dir -r custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt && \
+    pip install --no-cache-dir -r custom_nodes/ComfyUI-HunyuanVideoWrapper/requirements.txt && \
+    pip install --no-cache-dir -r custom_nodes/ComfyUI-CogVideoXWrapper/requirements.txt || true
+
+# Configure model path to use network volume
+ENV COMFYUI_MODEL_PATH=/runpod-volume/models
+
 # Change working directory to ComfyUI
 WORKDIR /comfyui
 
