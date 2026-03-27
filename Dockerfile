@@ -73,9 +73,12 @@ RUN cd /comfyui/custom_nodes && \
 
 # Install Python dependencies for custom nodes
 RUN cd /comfyui && \
-    pip install --no-cache-dir -r custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt && \
-    pip install --no-cache-dir -r custom_nodes/ComfyUI-HunyuanVideoWrapper/requirements.txt && \
-    pip install --no-cache-dir -r custom_nodes/ComfyUI-CogVideoXWrapper/requirements.txt || true
+    uv pip install -r custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true && \
+    uv pip install -r custom_nodes/ComfyUI-HunyuanVideoWrapper/requirements.txt || true && \
+    uv pip install -r custom_nodes/ComfyUI-CogVideoXWrapper/requirements.txt || true && \
+    uv pip install -r custom_nodes/ComfyUI-MochiWrapper/requirements.txt || true && \
+    uv pip install -r custom_nodes/ComfyUI-WanVideoWrapper/requirements.txt || true && \
+    uv pip install gguf ftfy
 
 # Configure model path to use network volume
 ENV COMFYUI_MODEL_PATH=/runpod-volume/models
@@ -106,6 +109,13 @@ ENV PIP_NO_INPUT=1
 # Copy helper script to switch Manager network mode at container start
 COPY scripts/comfy-manager-set-mode.sh /usr/local/bin/comfy-manager-set-mode
 RUN chmod +x /usr/local/bin/comfy-manager-set-mode
+
+# Fix all dependencies last — uv clobbers packages during earlier installs.
+# 1. Reinstall ComfyUI requirements with pip (not uv) to get everything ComfyUI needs
+# 2. Reinstall PyTorch CUDA on top (pip won't remove other packages like uv does)
+RUN /opt/venv/bin/pip install --no-cache-dir -r /comfyui/requirements.txt && \
+    /opt/venv/bin/pip install --no-cache-dir torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124 && \
+    /opt/venv/bin/pip install --no-cache-dir huggingface_hub gguf ftfy
 
 # Set the default command to run when starting the container
 CMD ["/start.sh"]
