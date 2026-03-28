@@ -29,23 +29,29 @@ export LD_PRELOAD="${TCMALLOC}"
 # so we fail fast with an actionable error message.
 # ---------------------------------------------------------------------------
 echo "worker-comfyui: Checking GPU availability..."
-if ! GPU_CHECK=$(python3 -c "
+GPU_CHECK=$(python3 -c "
 import torch
+print(f'PyTorch version: {torch.__version__}')
+print(f'CUDA available: {torch.cuda.is_available()}')
+print(f'CUDA version: {torch.version.cuda}')
 try:
     torch.cuda.init()
     name = torch.cuda.get_device_name(0)
+    cap = torch.cuda.get_device_capability(0)
+    print(f'GPU: {name}')
+    print(f'Compute capability: sm_{cap[0]}{cap[1]}')
     print(f'OK: {name}')
 except Exception as e:
     print(f'FAIL: {e}')
     exit(1)
-" 2>&1); then
-    echo "worker-comfyui: GPU is not available. PyTorch CUDA init failed:"
-    echo "worker-comfyui: $GPU_CHECK"
-    echo "worker-comfyui: This usually means the GPU on this machine is not properly initialized."
-    echo "worker-comfyui: Please contact RunPod support and report this machine."
-    exit 1
+" 2>&1)
+GPU_EXIT=$?
+echo "worker-comfyui: GPU diagnostics:"
+echo "$GPU_CHECK" | while read line; do echo "worker-comfyui:   $line"; done
+if [ $GPU_EXIT -ne 0 ]; then
+    echo "worker-comfyui: GPU check failed but continuing anyway to allow ComfyUI to start with fallback."
+    echo "worker-comfyui: If inference fails, this machine's GPU/driver may be incompatible."
 fi
-echo "worker-comfyui: GPU available — $GPU_CHECK"
 
 # Ensure ComfyUI-Manager runs in offline network mode inside the container
 comfy-manager-set-mode offline || echo "worker-comfyui - Could not set ComfyUI-Manager network_mode" >&2

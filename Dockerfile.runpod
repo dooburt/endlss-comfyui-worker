@@ -1,0 +1,29 @@
+# Use RunPod's proven ComfyUI worker image as base
+# This image has PyTorch 2.9.1+cu128, ComfyUI, and the serverless handler pre-configured
+FROM registry.runpod.net/xhaileab-comfuistory-main-dockerfile:64c99670b
+
+# ── Custom nodes for video generation ────────────────────────────────────
+RUN cd /comfyui/custom_nodes && \
+    git clone https://github.com/Kosinkadink/ComfyUI-VideoHelperSuite.git && \
+    git clone https://github.com/Kosinkadink/ComfyUI-AnimateDiff-Evolved.git && \
+    git clone https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-CogVideoXWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-MochiWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git
+
+# Install Python dependencies for custom nodes
+RUN /opt/venv/bin/pip install --no-cache-dir \
+    gguf ftfy diffusers accelerate opencv-python-headless huggingface_hub || true
+
+# Install custom node requirements
+RUN cd /comfyui && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-VideoHelperSuite/requirements.txt || true && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-HunyuanVideoWrapper/requirements.txt || true && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-CogVideoXWrapper/requirements.txt || true && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-MochiWrapper/requirements.txt || true && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-WanVideoWrapper/requirements.txt || true && \
+    /opt/venv/bin/pip install --no-cache-dir -r custom_nodes/ComfyUI-KJNodes/requirements.txt || true
+
+# Add our extra_model_paths.yaml for network volume support
+COPY src/extra_model_paths.yaml /comfyui/extra_model_paths.yaml

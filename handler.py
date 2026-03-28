@@ -15,6 +15,8 @@ import socket
 import traceback
 import logging
 
+from pathlib import Path
+
 from network_volume import (
     is_network_volume_debug_enabled,
     run_network_volume_diagnostics,
@@ -145,6 +147,56 @@ def _attempt_websocket_reconnect(ws_url, max_attempts, delay_s, initial_error):
     raise websocket.WebSocketConnectionClosedException(
         f"Connection closed and failed to reconnect. Last error: {last_reconnect_error}"
     )
+
+
+# ─── LoRA download-on-first-use ─────────────────────────────────────────────
+
+LORA_DIR = Path("/runpod-volume/models/loras")
+
+
+def download_loras(lora_downloads):
+    """
+    Download LoRA files from presigned S3 URLs to the network volume if they
+    don't already exist. Once downloaded, they persist across worker restarts.
+
+    Args:
+        lora_downloads (list): List of dicts with 'url' and 'filename' keys.
+    """
+    if not lora_downloads:
+        return
+
+    LORA_DIR.mkdir(parents=True, exist_ok=True)
+
+    for lora in lora_downloads:
+        url = lora.get("url")
+        filename = lora.get("filename")
+        if not url or not filename:
+            print(f"worker-comfyui - Skipping LoRA with missing url/filename: {lora}")
+            continue
+
+        dest = LORA_DIR / filename
+
+        if dest.exists():
+            size_mb = dest.stat().st_size / (1024 * 1024)
+            print(f"worker-comfyui - LoRA already cached: {filename} ({size_mb:.1f} MB)")
+            continue
+
+        print(f"worker-comfyui - Downloading LoRA: {filename}")
+        start = time.time()
+        try:
+            urllib.request.urlretrieve(url, str(dest))
+            elapsed = time.time() - start
+            size_mb = dest.stat().st_size / (1024 * 1024)
+            print(
+                f"worker-comfyui - LoRA downloaded: {filename} "
+                f"({size_mb:.1f} MB in {elapsed:.1f}s)"
+            )
+        except Exception as e:
+            print(f"worker-comfyui - Failed to download LoRA {filename}: {e}")
+            # Clean up partial download
+            if dest.exists():
+                dest.unlink()
+            raise ValueError(f"Failed to download LoRA: {filename}")
 
 
 def validate_input(job_input):
@@ -596,6 +648,14 @@ def handler(job):
     # Extract validated data
     workflow = validated_data["workflow"]
     input_images = validated_data.get("images")
+
+    # Download any LoRA files from S3 that aren't already cached on the volume
+    lora_downloads = job_input.get("lora_downloads")
+    if lora_downloads:
+        try:
+            download_loras(lora_downloads)
+        except ValueError as e:
+            return {"error": str(e)}
 
     # Make sure that the ComfyUI HTTP API is available before proceeding
     if not check_server(
