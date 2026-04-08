@@ -56,6 +56,31 @@ fi
 # Ensure ComfyUI-Manager runs in offline network mode inside the container
 comfy-manager-set-mode offline || echo "worker-comfyui - Could not set ComfyUI-Manager network_mode" >&2
 
+# ---------------------------------------------------------------------------
+# Symlink HuggingFace model caches from network volume
+# Hunyuan models expect CLIP and LLM text encoders at /comfyui/models/ paths.
+# Pre-downloaded copies on the network volume avoid runtime HF downloads.
+# ---------------------------------------------------------------------------
+echo "worker-comfyui: Setting up model symlinks..."
+mkdir -p /comfyui/models/clip /comfyui/models/LLM
+
+# CLIP for hunyuan-t2v (openai/clip-vit-large-patch14)
+if [ -d "/runpod-volume/models/clip/clip-vit-large-patch14" ] && [ ! -L "/comfyui/models/clip/clip-vit-large-patch14" ]; then
+    ln -sf /runpod-volume/models/clip/clip-vit-large-patch14 /comfyui/models/clip/clip-vit-large-patch14
+    echo "worker-comfyui:   Linked clip-vit-large-patch14"
+fi
+
+# LLM text encoders for hunyuan (llava-llama-3-8b variants)
+for model_dir in /runpod-volume/models/LLM/*/; do
+    if [ -d "$model_dir" ]; then
+        model_name=$(basename "$model_dir")
+        if [ ! -L "/comfyui/models/LLM/$model_name" ]; then
+            ln -sf "$model_dir" "/comfyui/models/LLM/$model_name"
+            echo "worker-comfyui:   Linked LLM/$model_name"
+        fi
+    fi
+done
+
 echo "worker-comfyui: Starting ComfyUI"
 
 # Allow operators to tweak verbosity; default is DEBUG.

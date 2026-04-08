@@ -80,6 +80,16 @@ RUN cd /comfyui && \
     uv pip install -r custom_nodes/ComfyUI-WanVideoWrapper/requirements.txt || true && \
     uv pip install gguf ftfy
 
+# Pinned transformers version to avoid v5.0.0+ breaking changes in custom nodes
+RUN uv pip install "transformers<5.0.0"
+
+# Patch HunyuanVideoWrapper: remove device=device from processor calls
+# (LlavaProcessor and CLIPImageProcessor don't accept device kwarg, causes JSON serialization error)
+RUN sed -i \
+    -e 's/LlavaProcessor.from_pretrained(text_encoder_path, device=device)/LlavaProcessor.from_pretrained(text_encoder_path)/' \
+    -e 's/CLIPImageProcessor.from_pretrained(text_encoder_path, device=device)/CLIPImageProcessor.from_pretrained(text_encoder_path)/' \
+    /comfyui/custom_nodes/ComfyUI-HunyuanVideoWrapper/hyvideo/text_encoder/__init__.py
+
 # Configure model path to use network volume
 ENV COMFYUI_MODEL_PATH=/runpod-volume/models
 
