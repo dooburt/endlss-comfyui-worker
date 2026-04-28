@@ -3,6 +3,7 @@ runpod_worker_comfy:
   checkpoints: models/checkpoints/
   clip: models/clip/
   clip_vision: models/clip_vision/
+  text_encoders: models/text_encoders/
   configs: models/configs/
   controlnet: models/controlnet/
   embeddings: models/embeddings/
