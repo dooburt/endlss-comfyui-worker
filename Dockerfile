@@ -69,7 +69,8 @@ RUN cd /comfyui/custom_nodes && \
     git clone https://github.com/kijai/ComfyUI-HunyuanVideoWrapper.git && \
     git clone https://github.com/kijai/ComfyUI-CogVideoXWrapper.git && \
     git clone https://github.com/kijai/ComfyUI-MochiWrapper.git && \
-    git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git
+    git clone https://github.com/kijai/ComfyUI-WanVideoWrapper.git && \
+    git clone https://github.com/kijai/ComfyUI-KJNodes.git
 
 # Install Python dependencies for custom nodes
 RUN cd /comfyui && \
@@ -78,6 +79,7 @@ RUN cd /comfyui && \
     uv pip install -r custom_nodes/ComfyUI-CogVideoXWrapper/requirements.txt || true && \
     uv pip install -r custom_nodes/ComfyUI-MochiWrapper/requirements.txt || true && \
     uv pip install -r custom_nodes/ComfyUI-WanVideoWrapper/requirements.txt || true && \
+    uv pip install -r custom_nodes/ComfyUI-KJNodes/requirements.txt || true && \
     uv pip install gguf ftfy
 
 # Pinned transformers version to avoid v5.0.0+ breaking changes in custom nodes

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# v14 smoke tests — auto-polling version
+# v15 smoke tests — auto-polling version
 # Requires: RUNPOD_API_KEY env var set
 
 IMAGE_ENDPOINT="8lgc121i8czhwh"
